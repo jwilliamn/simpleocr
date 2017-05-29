@@ -36,19 +36,6 @@ from pytesseract import image_to_string
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Function definitions ####
-def dilate(ary, N, iterations): 
-    """Dilate using an NxN '+' sign shape. ary is np.uint8."""
-    kernel = np.zeros((N,N), dtype=np.uint8)
-    kernel[(N-1)/2,:] = 1
-    dilated_image = cv2.dilate(ary / 255, kernel, iterations=iterations)
-
-    kernel = np.zeros((N,N), dtype=np.uint8)
-    kernel[:,(N-1)/2] = 1
-    dilated_image = cv2.dilate(dilated_image, kernel, iterations=iterations)
-    #plt.imshow(dilated_image)
-    #plt.show()
-    print(type(dilated_image), dilated_image)
-    return dilated_image
 
 def find_components(edges, max_components=16):
     """Dilate the image until there are just a few connected components.
@@ -97,6 +84,42 @@ def find_border_components(contours, ary):
             borders.append((i, x, y, x + w - 1, y + h - 1))
     return borders
 
+def dilate(img, N=35, iterations): 
+    """Dilate using an NxN '+' sign shape. img is np.uint8."""
+    #kernel = np.zeros((N,N), dtype=np.uint8)
+    #kernel[(N-1)/2,:] = 1
+    #dilated_image = cv2.dilate(ary / 255, kernel, iterations=iterations)
+    #kernel = np.zeros((N,N), dtype=np.uint8)
+    #kernel[:,(N-1)/2] = 1
+    #dilated_image = cv2.dilate(dilated_image, kernel, iterations=iterations)
+
+    kernel = np.ones((N,N), dtype=np.uint8)
+    dilated_image = cv2.dilate(img, kernel, iterations=iterations)
+    #plt.imshow(dilated_image)
+    #plt.show()
+    print(type(dilated_image))
+    return dilated_image
+
+def closing(img, N=35): 
+    """Close using an NxN '+' sign shape. img is np.uint8."""
+
+    kernel = np.ones((N,N), dtype=np.uint8)
+    closing = cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel)
+    #plt.imshow(closing)
+    #plt.show()
+    print(type(closing))
+    return closing
+
+def morphologicalOp(img)
+    edges = cv2.Canny(img, 100, 200)
+    #plt.imshow(edges, cmap=plt.cm.gray)
+    #plt.show()
+
+    dilation = dilate(img, interations=1)
+    closing = closing(dilation)
+    return closing
+
+
 def downscale_image(image, max_dim=2048):
     # we need to keep in mind aspect ratio so the image does
     # not look skewed or distorted -- therefore, we calculate
@@ -108,44 +131,24 @@ def downscale_image(image, max_dim=2048):
     resized = cv2.resize(image, dim, interpolation = cv2.INTER_AREA)
     return resized
 
-def process_image(path, out_path):
-    orig_im = Image.open(path)
-
-    print('Original image read with Image.open', type(orig_im))
-    im  = cv2.imread(path)
-    print('image read with cv2.imread', type(im))
-    img = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
+def process_image(path):
+    img  = cv2.imread(path, 0)
+    #img = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
 
     print(type(img), img.shape[0], img.shape[1])
 
     #img = downscale_image(img)
 
-    #plt.subplot(121),plt.imshow(im)
-    #plt.title('Original Image'), plt.xticks([]), plt.yticks([])
-    #plt.subplot(122),plt.imshow(img)
-    #plt.title('gray Image'), plt.xticks([]), plt.yticks([])
+    #plt.subplot(121),plt.imshow(img)
+    #plt.title('Gray Image with cv2 colorbgr2gray') #, plt.xticks([]), plt.yticks([])
+    #plt.subplot(122),plt.imshow(imOg)
+    #plt.title('gray Image when reading') #, plt.xticks([]), plt.yticks([])
     #plt.show()
     
+    # Morphological transformations
+    imgMorph = morphologicalOp(img) # result of image after some operations
 
-    edges = cv2.Canny(img, 100, 200)
 
-    plt.imshow(edges, cmap=plt.cm.gray)
-    plt.show()
-    
-    kernel = np.ones((35,35),np.uint8)
-    dilation = cv2.dilate(edges, kernel, iterations = 1)
-    kernel = np.ones((35,35),np.uint8)
-    closing = cv2.morphologyEx(dilation, cv2.MORPH_CLOSE, kernel)
-
-    #N = 3
-    #kernel = np.zeros((N,N), dtype=np.uint8)
-    #print('kernel', kernel)
-    #kernel[int((N-1)/2),:] = 1
-    #dilated_image = cv2.dilate(edges, kernel, iterations=1)
-    #print('kernel', kernel)
-
-    plt.imshow(closing)
-    plt.show()
     # TODO: dilate image _before_ finding a border. This is crazy sensitive!
     ret, thresh = cv2.threshold(closing,127,255,0)
     _, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -203,6 +206,7 @@ def process_image(path, out_path):
 
     # Stright Bounding Rectangle ####
     x,y,w,h = cv2.boundingRect(cnt)
+    imCop = im.copy()
     cv2.rectangle(im,(x,y),(x+w,y+h),(0,255,0),2)
 
     print('x & y', x, y)
@@ -211,9 +215,11 @@ def process_image(path, out_path):
 
     # Crop picture
     # NOTE: its img[y: y + h, x: x + w] and *not* img[x: x + w, y: y + h]
-    cropIm = im[0:y-10, 0:int(img.shape[1]/2)]
+    #cropIm = im[0:y-10, 0:int(img.shape[1]/2)]
+    cropIm = imCop[0:y, 0:int(img.shape[1]/2)]
 
     plt.imshow(cropIm)
+    plt.title("After Largest box croped")
     plt.show()
 
     # Working on croped image
@@ -271,14 +277,14 @@ def process_image(path, out_path):
     
     kernel = np.ones((25,25),np.uint8)
     dilation = cv2.dilate(edgesAft, kernel, iterations = 1)
-    #kernel = np.ones((35,35),np.uint8)
-    #closing = cv2.morphologyEx(dilation, cv2.MORPH_CLOSE, kernel)
+    kernel = np.ones((5,5),np.uint8)
+    closing = cv2.morphologyEx(dilation, cv2.MORPH_CLOSE, kernel)
 
-    plt.imshow(dilation)
+    plt.imshow(closing)
     plt.show()
 
     # find contours
-    ret, thresh = cv2.threshold(dilation,127,255,0)
+    ret, thresh = cv2.threshold(closing,127,255,0)
     _, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
     cnts = sorted(contours, key = cv2.contourArea, reverse = False)
@@ -297,16 +303,33 @@ def process_image(path, out_path):
     cropfin = crop2Cop[y:y+h, x:x+w]
 
     plt.imshow(cropfin)
+    plt.title("Final image redy to be predicted")
     plt.show()
 
-    #Save final croped picture
-    cv2.imwrite('croped.png',cropfin)
+    print('Final Stage')
+    edgesAft = cv2.Canny(cropfin, 100, 200)
+    kernel = np.ones((1,1),np.uint8)
+    #kernel = np.zeros((1,1),np.uint8)
+    erosion = cv2.erode(cropfin, kernel, iterations = 1)
+    #closing = cv2.morphologyEx(cropfin, cv2.MORPH_CLOSE, kernel)
 
-    pilIm = Image.fromarray(np.rollaxis(cropfin,0,0))
+    plt.imshow(erosion)
+    #plt.imshow(closing)
+    plt.title("final crop eroded")
+    plt.show()
+
+    pilIm = Image.fromarray(np.rollaxis(erosion,0,0))
+    #pilIm = Image.fromarray(np.rollaxis(closing,0,0))
+
+    #pilIm = Image.fromarray(np.rollaxis(cropfin,0,0))
 
     # Recognition
-    text = image_to_string(pilIm, lang='eng')
+    #text = image_to_string(pilIm, lang='eng')
+    text = image_to_string(pilIm, lang='spa')
     print('Recognized register', text)
+
+    #Save final croped picture
+    cv2.imwrite('test/croped_' + text + '.png',cropfin)
 
 
     """
