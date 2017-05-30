@@ -37,24 +37,6 @@ APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Function definitions ####
 
-def find_components(edges, max_components=16):
-    """Dilate the image until there are just a few connected components.
-    Returns contours for these components."""
-    # Perform increasingly aggressive dilation until there are just a few
-    # connected components.
-    count = 21
-    dilation = 5
-    n = 1
-    while count > 16:
-        n += 1
-        dilated_image = dilate(edges, N=3, iterations=n)
-        contours, hierarchy = cv2.findContours(dilated_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        count = len(contours)
-    #print dilation
-    #Image.fromarray(edges).show()
-    #Image.fromarray(255 * dilated_image).show()
-    return contours
-
 def remove_border(contour, ary):
     """Remove everything outside a border contour."""
     # Use a rotated rectangle (should be a good approximation of a border).
@@ -83,6 +65,9 @@ def find_border_components(contours, ary):
         if w * h > 0.5 * area:
             borders.append((i, x, y, x + w - 1, y + h - 1))
     return borders
+
+
+
 
 def dilate(img, N=35, iterations): 
     """Dilate using an NxN '+' sign shape. img is np.uint8."""
@@ -119,6 +104,23 @@ def morphologicalOp(img)
     closing = closing(dilation)
     return closing
 
+def find_components(edges, max_components=16):
+    """Dilate the image until there are just a few connected components.
+    Returns contours for these components."""
+    # Perform increasingly aggressive dilation until there are just a few
+    # connected components.
+    count = 21
+    dilation = 5
+    n = 1
+    while count > 16:
+        n += 1
+        dilated_image = dilate(edges, N=3, iterations=n)
+        contours, hierarchy = cv2.findContours(dilated_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        count = len(contours)
+    #print dilation
+    #Image.fromarray(edges).show()
+    #Image.fromarray(255 * dilated_image).show()
+    return contours
 
 def downscale_image(image, max_dim=2048):
     # we need to keep in mind aspect ratio so the image does
@@ -145,6 +147,9 @@ def process_image(path):
     #plt.title('gray Image when reading') #, plt.xticks([]), plt.yticks([])
     #plt.show()
     
+    # Find components
+    contours = find_components()
+
     # Morphological transformations
     imgMorph = morphologicalOp(img) # result of image after some operations
 
