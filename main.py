@@ -62,7 +62,7 @@ if __name__ == '__main__':
     else:
         if splitArg[1] == 'pdf' or splitArg[1] == 'PDF':
             print('File is a pdf!')
-            pdfPath, numPag = processPdf(arg)
+            inputPdf, pdfPath, numPag = processPdf(arg)
             imgPath = convert_pdf_png(pdfPath, numPag)
         else:
             raise ValueError(splitArg[1] + ' File format cannot be processed :(!')
@@ -71,7 +71,12 @@ if __name__ == '__main__':
     # Actual processing
     for path in imgPath:
         try:
-            process_image(path)
+            text = process_image(path)
             continue
         except Exception as e:
-            print('%s %s' % (path, e))
+            print('Exception %s %s' % (path, e))
+
+    outPdf = PdfFileWriter()
+    outPdf.appendPagesFromReader(inputPdf)
+    with open(join(APP_DIR, 'output/' + text + '.pdf'), 'wb') as fi:
+            outPdf.write(fi)

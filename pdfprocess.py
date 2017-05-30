@@ -50,7 +50,7 @@ def processPdf(originalPdf):
 
     outputPath = np.array(outputPath)
     #print('outputPdf', type(outputPath), outputPath)
-    return outputPath, inputPdf.getNumPages()
+    return inputPdf, outputPath, inputPdf.getNumPages()
 
 
 def convert_pdf_png(filePath, numPages):
